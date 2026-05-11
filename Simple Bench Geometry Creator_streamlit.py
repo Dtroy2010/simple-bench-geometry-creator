@@ -31,7 +31,6 @@ def generate_full_slope(
     stack_height: float,
     bench_face_angle: float,
     bench_height: float,
-    geotechnical_berm_width,  # float or None
     overall_height: float,
     start_coords: tuple = (0, 0),
     direction: str = "right",
@@ -64,12 +63,6 @@ def generate_full_slope(
             x += sign * bench_width
             vertices.append((x, y))
 
-        # Geotechnical berm between stacks (skip after the last stack)
-        not_last_stack = stack < total_stacks - 1
-        if geotechnical_berm_width is not None and not_last_stack:
-            x += sign * (geotechnical_berm_width - bench_width)
-            vertices.append((x, y))
-
     return np.array(vertices)
 
 
@@ -100,7 +93,6 @@ def generate_combined_slope(slope_segments: list, direction: str = "right") -> t
             stack_height=seg["stack_height"],
             bench_face_angle=seg["bench_face_angle"],
             bench_height=seg["bench_height"],
-            geotechnical_berm_width=seg.get("geotechnical_berm_width"),
             overall_height=seg["overall_height"],
             start_coords=current_start,
             direction=direction,
@@ -145,8 +137,6 @@ def _default_segment(n: int, units: str = "m") -> dict:
         "bench_height": bh,
         "stack_height": sh,
         "overall_height": sh,
-        "geotechnical_berm_width": 0.0,
-        "use_geo_berm": False,
         "road_width": rw,
     }
 
@@ -167,7 +157,6 @@ def build_geometry(
     slope_segments = []
     warnings = []
     for i, s in enumerate(segments):
-        geo_berm = s["geotechnical_berm_width"] if s["use_geo_berm"] else None
         if s["stack_height"] % s["bench_height"] != 0:
             warnings.append(
                 f"{s['label']}: bench_height ({s['bench_height']} {unit_label}) does not "
@@ -179,7 +168,6 @@ def build_geometry(
             "bench_height": s["bench_height"],
             "stack_height": s["stack_height"],
             "overall_height": s["overall_height"],
-            "geotechnical_berm_width": geo_berm,
             "road_width": s["road_width"] if i < len(segments) - 1 else None,
             "label": s["label"],
             "bench_width": calculate_bench_width(s["inter_ramp_angle"], s["bench_height"], s["bench_face_angle"]),
@@ -404,18 +392,9 @@ def main() -> None:
                         value=float(seg["overall_height"]), step=0.5, key=f"oh_{i}"
                     )
                 with col3:
-                    seg["use_geo_berm"] = st.checkbox(
-                        "Geo Berm", value=seg.get("use_geo_berm", False), key=f"ugb_{i}"
-                    )
-                    if seg["use_geo_berm"]:
-                        seg["geotechnical_berm_width"] = st.number_input(
-                            f"Berm Width ({u})", min_value=0.0,
-                            value=float(seg.get("geotechnical_berm_width") or 5.0),
-                            step=0.5, key=f"gbw_{i}"
-                        )
                     if i < len(st.session_state.segments) - 1:
                         seg["road_width"] = st.number_input(
-                            f"Road Width ({u})", min_value=0.0,
+                            f"Ramp Width ({u})", min_value=0.0,
                             value=float(seg.get("road_width") or 20.0),
                             step=0.5, key=f"rw_{i}",
                             help="Flat access ramp to next segment."
