@@ -410,9 +410,17 @@ def main() -> None:
             "toe_anchor_y": float(toe_anchor[1]) if toe_anchor is not None else float(st.session_state.get("toe_anchor_y", 0.0)),
             "crest_setback": float(st.session_state.get("crest_setback", 15.0 if units == "m" else 50.0)),
             "segments": [
-                {k: (float(v) if isinstance(v, (int, float, np.floating)) else v)
-                 for k, v in seg.items()}
-                for seg in st.session_state.segments
+                {
+                    "label":            st.session_state.get(f"label_{i}", seg["label"]),
+                    "inter_ramp_angle": float(st.session_state.get(f"ira_{i}", seg["inter_ramp_angle"])),
+                    "bench_face_angle": float(st.session_state.get(f"bfa_{i}", seg["bench_face_angle"])),
+                    "bench_height":     float(st.session_state.get(f"bh_{i}",  seg["bench_height"])),
+                    "stack_height":     float(st.session_state.get(f"sh_{i}",  seg["stack_height"])),
+                    "berm_width":       float(st.session_state.get(f"bw_{i}",  seg.get("berm_width", 0.0))),
+                    "overall_height":   float(st.session_state.get(f"oh_{i}",  seg["overall_height"])),
+                    "road_width":       float(st.session_state.get(f"rw_{i}",  seg.get("road_width", 20.0))),
+                }
+                for i, seg in enumerate(st.session_state.segments)
             ],
         }
         st.download_button(
