@@ -406,8 +406,8 @@ def main() -> None:
             "crest_width": float(st.session_state.get("crest_width", 40.0)),
             "depth_below_toe": float(st.session_state.get("depth_below_toe", 50.3)),
             "use_toe_anchor": bool(st.session_state.get("use_toe_anchor", False)),
-            "toe_anchor_x": float(st.session_state.get("toe_anchor_x", 0.0)),
-            "toe_anchor_y": float(st.session_state.get("toe_anchor_y", 0.0)),
+            "toe_anchor_x": float(toe_anchor[0]) if toe_anchor is not None else float(st.session_state.get("toe_anchor_x", 0.0)),
+            "toe_anchor_y": float(toe_anchor[1]) if toe_anchor is not None else float(st.session_state.get("toe_anchor_y", 0.0)),
             "crest_setback": float(st.session_state.get("crest_setback", 15.0 if units == "m" else 50.0)),
             "segments": [
                 {k: (float(v) if isinstance(v, (int, float, np.floating)) else v)
