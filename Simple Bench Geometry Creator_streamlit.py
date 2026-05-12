@@ -35,6 +35,7 @@ def generate_full_slope(
     overall_height: float,
     start_coords: tuple = (0, 0),
     direction: str = "right",
+    berm_width: float = 0.0,
 ) -> np.ndarray:
     """Generate vertex coordinates for one slope segment."""
     num_full_stacks = int(overall_height // stack_height)
@@ -62,6 +63,11 @@ def generate_full_slope(
             y += remainder
             vertices.append((x, y))
             x += sign * bench_width
+            vertices.append((x, y))
+
+        # Inter-stack berm: wide flat platform after each complete stack except the last
+        if berm_width > 0 and stack < total_stacks - 1:
+            x += sign * berm_width
             vertices.append((x, y))
 
     return np.array(vertices)
@@ -97,6 +103,7 @@ def generate_combined_slope(slope_segments: list, direction: str = "right") -> t
             overall_height=seg["overall_height"],
             start_coords=current_start,
             direction=direction,
+            berm_width=seg.get("berm_width", 0.0),
         )
         combined_vertices.append(vertices)
         segment_info.append({
@@ -139,6 +146,7 @@ def _default_segment(n: int, units: str = "m") -> dict:
         "stack_height": sh,
         "overall_height": sh,
         "road_width": rw,
+        "berm_width": 0.0,
     }
 
 
@@ -173,6 +181,7 @@ def build_geometry(
             "road_width": s["road_width"] if i < len(segments) - 1 else None,
             "label": s["label"],
             "bench_width": calculate_bench_width(s["inter_ramp_angle"], s["bench_height"], s["bench_face_angle"]),
+            "berm_width": s.get("berm_width", 0.0),
         })
 
     all_vertices, segment_info = generate_combined_slope(slope_segments, direction=direction)
@@ -414,6 +423,11 @@ def main() -> None:
                     seg["stack_height"] = st.number_input(
                         f"Stack Height ({u})", min_value=0.1,
                         value=float(seg["stack_height"]), step=0.5, key=f"sh_{i}"
+                    )
+                    seg["berm_width"] = st.number_input(
+                        f"Inter-Stack Berm Width ({u})", min_value=0.0,
+                        value=float(seg.get("berm_width", 0.0)), step=0.5, key=f"bw_{i}",
+                        help="Wide flat platform inserted at each stack boundary within this segment (0 = none)."
                     )
                     seg["overall_height"] = st.number_input(
                         f"Overall Height ({u})", min_value=0.1,
