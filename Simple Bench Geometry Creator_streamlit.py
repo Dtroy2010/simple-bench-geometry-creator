@@ -16,6 +16,7 @@ Run with:
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
+import json
 
 # ===========================================================================
 #  FUNCTIONS  (no need to edit below this line)
@@ -336,7 +337,7 @@ def main() -> None:
                 st.session_state.pop(_k, None)
             st.rerun()
 
-        _failure_dir = st.selectbox("Failure Direction", ["Left to Right", "Right to Left"], index=0)
+        _failure_dir = st.selectbox("Failure Direction", ["Left to Right", "Right to Left"], index=0, key="failure_dir")
         direction = "left" if _failure_dir == "Left to Right" else "right"
         toe_width = st.number_input(
             f"Toe Platform Width ({u})", min_value=0.0,
@@ -394,6 +395,59 @@ def main() -> None:
                                       help="Point offset 0.3H from each segment toe, perpendicular to the overall slope line into the slope.")
         show_boundary_pt = st.checkbox("Show Boundary Point", value=False, key="show_boundary_pt",
                                        help="Point at the same elevation as the lowest toe offset point, extended to the far edge of the model boundary.")
+        st.divider()
+        st.subheader("Save / Load Configuration")
+        # ── Save ──
+        _config_to_save = {
+            "version": 1,
+            "units": units,
+            "failure_direction": st.session_state.get("failure_dir", "Left to Right"),
+            "toe_width": float(st.session_state.get("toe_width", 40.0)),
+            "crest_width": float(st.session_state.get("crest_width", 40.0)),
+            "depth_below_toe": float(st.session_state.get("depth_below_toe", 50.3)),
+            "use_toe_anchor": bool(st.session_state.get("use_toe_anchor", False)),
+            "toe_anchor_x": float(st.session_state.get("toe_anchor_x", 0.0)),
+            "toe_anchor_y": float(st.session_state.get("toe_anchor_y", 0.0)),
+            "crest_setback": float(st.session_state.get("crest_setback", 15.0 if units == "m" else 50.0)),
+            "segments": [
+                {k: (float(v) if isinstance(v, (int, float, np.floating)) else v)
+                 for k, v in seg.items()}
+                for seg in st.session_state.segments
+            ],
+        }
+        st.download_button(
+            label="💾 Save Configuration",
+            data=json.dumps(_config_to_save, indent=2),
+            file_name="bench_geometry_config.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        # ── Load ──
+        _uploaded_config = st.file_uploader(
+            "Load Configuration (.json)", type=["json"], key="config_upload",
+        )
+        if _uploaded_config is not None:
+            _content = _uploaded_config.read()
+            _content_hash = hash(_content)
+            if st.session_state.get("_last_config_hash") != _content_hash:
+                try:
+                    _cfg = json.loads(_content)
+                    st.session_state["_last_config_hash"] = _content_hash
+                    st.session_state.segments = _cfg["segments"]
+                    _new_units = _cfg.get("units", "m")
+                    st.session_state["units_select"] = _new_units
+                    st.session_state["_last_units"] = _new_units
+                    st.session_state["failure_dir"] = _cfg.get("failure_direction", "Left to Right")
+                    st.session_state["toe_width"] = _cfg.get("toe_width", 40.0)
+                    st.session_state["crest_width"] = _cfg.get("crest_width", 40.0)
+                    st.session_state["depth_below_toe"] = _cfg.get("depth_below_toe", 50.3)
+                    st.session_state["use_toe_anchor"] = _cfg.get("use_toe_anchor", False)
+                    st.session_state["toe_anchor_x"] = _cfg.get("toe_anchor_x", 0.0)
+                    st.session_state["toe_anchor_y"] = _cfg.get("toe_anchor_y", 0.0)
+                    st.session_state["crest_setback"] = _cfg.get("crest_setback", 15.0)
+                    st.rerun()
+                except Exception as _load_err:
+                    st.error(f"Failed to load configuration: {_load_err}")
 
     # ── Two-column layout ───────────────────────────────────────────────────
     left_col, right_col = st.columns([3, 2], gap="large")
