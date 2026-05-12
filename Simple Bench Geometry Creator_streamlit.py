@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 # Author: DRoy
 # Date: 2024-12-04
@@ -148,6 +149,7 @@ def build_geometry(
     crest_width: float,
     depth_below_toe: float,
     unit_label: str = "m",
+    toe_anchor: tuple | None = None,
 ) -> tuple[np.ndarray, list[dict], list[str]]:
     """Build the full slope geometry from the UI segment definitions.
 
@@ -209,11 +211,24 @@ def build_geometry(
         for info in segment_info
     ]
 
+    if toe_anchor is not None:
+        dx = toe_anchor[0] - float(segment_toes[0][0])
+        dy = toe_anchor[1] - float(segment_toes[0][1])
+        all_vertices[:, 0] += dx
+        all_vertices[:, 1] += dy
+        for info in segment_info:
+            info["x_start"] += dx
+            info["y_start"] += dy
+            info["x_end"] += dx
+            info["y_end"] += dy
+        segment_crests = [np.array([c[0] + dx, c[1] + dy]) for c in segment_crests]
+        segment_toes = [np.array([t[0] + dx, t[1] + dy]) for t in segment_toes]
+
     x_first, y_first = float(all_vertices[0, 0]), float(all_vertices[0, 1])
     x_last = float(all_vertices[-1, 0])
     closing_pts = np.array([
-        [x_last,  -depth_below_toe],
-        [x_first, -depth_below_toe],
+        [x_last,  y_first - depth_below_toe],
+        [x_first, y_first - depth_below_toe],
         [x_first, y_first],
     ])
     all_vertices = np.vstack([all_vertices, closing_pts])
@@ -308,7 +323,7 @@ def main() -> None:
         if st.session_state.get("_last_units") != units:
             st.session_state["_last_units"] = units
             st.session_state.segments = [_default_segment(1, units)]
-            for _k in ["toe_width", "crest_width", "depth_below_toe"]:
+            for _k in ["toe_width", "crest_width", "depth_below_toe", "toe_anchor_x", "toe_anchor_y"]:
                 st.session_state.pop(_k, None)
             st.rerun()
 
@@ -328,6 +343,19 @@ def main() -> None:
             key="depth_below_toe",
             help="Closes the polygon at this depth below the toe elevation."
         )
+        st.divider()
+        use_toe_anchor = st.checkbox(
+            "Pin Segment 1 Toe to Coordinates",
+            value=False,
+            key="use_toe_anchor",
+            help="Anchor the Segment 1 toe at specific X, Y coordinates. The entire section will be positioned relative to this point.",
+        )
+        if use_toe_anchor:
+            toe_anchor_x = st.number_input(f"Toe X ({u})", value=0.0, step=1.0, key="toe_anchor_x", format="%.2f")
+            toe_anchor_y = st.number_input(f"Toe Y ({u})", value=0.0, step=1.0, key="toe_anchor_y", format="%.2f")
+            toe_anchor = (toe_anchor_x, toe_anchor_y)
+        else:
+            toe_anchor = None
         st.divider()
         if st.button("➕ Add Segment", use_container_width=True):
             n = len(st.session_state.segments) + 1
@@ -419,7 +447,7 @@ def main() -> None:
         try:
             all_vertices, segment_info, warnings, segment_toes, segment_crests = build_geometry(
                 st.session_state.segments, direction, toe_width, crest_width,
-                depth_below_toe, unit_label=u
+                depth_below_toe, unit_label=u, toe_anchor=toe_anchor
             )
             for w in warnings:
                 st.warning(w)
