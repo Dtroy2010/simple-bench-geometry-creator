@@ -400,37 +400,15 @@ def main() -> None:
         st.divider()
         st.subheader("Save / Load Configuration")
         # ── Save ──
-        _config_to_save = {
-            "version": 1,
-            "units": units,
-            "failure_direction": st.session_state.get("failure_dir", "Left to Right"),
-            "toe_width": float(st.session_state.get("toe_width", 40.0)),
-            "crest_width": float(st.session_state.get("crest_width", 40.0)),
-            "depth_below_toe": float(st.session_state.get("depth_below_toe", 50.3)),
-            "use_toe_anchor": bool(st.session_state.get("use_toe_anchor", False)),
-            "toe_anchor_x": float(toe_anchor[0]) if toe_anchor is not None else float(st.session_state.get("toe_anchor_x", 0.0)),
-            "toe_anchor_y": float(toe_anchor[1]) if toe_anchor is not None else float(st.session_state.get("toe_anchor_y", 0.0)),
-            "crest_setback": float(st.session_state.get("crest_setback", 15.0 if units == "m" else 50.0)),
-            "segments": [
-                {
-                    "label":            st.session_state.get(f"label_{i}", seg["label"]),
-                    "inter_ramp_angle": float(st.session_state.get(f"ira_{i}", seg["inter_ramp_angle"])),
-                    "bench_face_angle": float(st.session_state.get(f"bfa_{i}", seg["bench_face_angle"])),
-                    "bench_height":     float(st.session_state.get(f"bh_{i}",  seg["bench_height"])),
-                    "stack_height":     float(st.session_state.get(f"sh_{i}",  seg["stack_height"])),
-                    "berm_width":       float(st.session_state.get(f"bw_{i}",  seg.get("berm_width", 0.0))),
-                    "overall_height":   float(st.session_state.get(f"oh_{i}",  seg["overall_height"])),
-                    "road_width":       float(st.session_state.get(f"rw_{i}",  seg.get("road_width", 20.0))),
-                }
-                for i, seg in enumerate(st.session_state.segments)
-            ],
-        }
+        # Config is computed at the END of main() after all widgets have rendered,
+        # then cached in session state so the download button always has fresh data.
         st.download_button(
             label="💾 Save Configuration",
-            data=json.dumps(_config_to_save, indent=2),
+            data=st.session_state.get("_config_json", "{}"),
             file_name="bench_geometry_config.json",
             mime="application/json",
             use_container_width=True,
+            help="Saves all current settings. Interact with the app once before downloading to ensure the file is up to date.",
         )
         # ── Load ──
         _uploaded_config = st.file_uploader(
@@ -821,6 +799,38 @@ def main() -> None:
                 mime="text/plain",
                 key="dl_damage_line",
             )
+
+    # ── Compute and cache config (must be last — after ALL widgets have rendered) ──
+    # Reading from session_state here guarantees we capture true current widget
+    # values for every field, including Segment 1 and the toe anchor coordinates.
+    _units_now = st.session_state.get("units_select", "m")
+    _cfg_segs = [
+        {
+            "label":            st.session_state.get(f"label_{_i}", _seg["label"]),
+            "inter_ramp_angle": float(st.session_state.get(f"ira_{_i}",  _seg["inter_ramp_angle"])),
+            "bench_face_angle": float(st.session_state.get(f"bfa_{_i}",  _seg["bench_face_angle"])),
+            "bench_height":     float(st.session_state.get(f"bh_{_i}",   _seg["bench_height"])),
+            "stack_height":     float(st.session_state.get(f"sh_{_i}",   _seg["stack_height"])),
+            "berm_width":       float(st.session_state.get(f"bw_{_i}",   _seg.get("berm_width", 0.0))),
+            "overall_height":   float(st.session_state.get(f"oh_{_i}",   _seg["overall_height"])),
+            "road_width":       float(st.session_state.get(f"rw_{_i}",   _seg.get("road_width", 20.0))),
+        }
+        for _i, _seg in enumerate(st.session_state.segments)
+    ]
+    st.session_state["_config_json"] = json.dumps({
+        "version": 1,
+        "units": _units_now,
+        "failure_direction": st.session_state.get("failure_dir", "Left to Right"),
+        "toe_width":         float(st.session_state.get("toe_width", 40.0)),
+        "crest_width":       float(st.session_state.get("crest_width", 40.0)),
+        "depth_below_toe":   float(st.session_state.get("depth_below_toe", 50.3)),
+        "use_toe_anchor":    bool(st.session_state.get("use_toe_anchor", False)),
+        "toe_anchor_x":      float(st.session_state.get("toe_anchor_x", 0.0)),
+        "toe_anchor_y":      float(st.session_state.get("toe_anchor_y", 0.0)),
+        "crest_setback":     float(st.session_state.get("crest_setback", 15.0 if _units_now == "m" else 50.0)),
+        "segments":          _cfg_segs,
+    }, indent=2)
+
 
 if __name__ == "__main__":
     main()
