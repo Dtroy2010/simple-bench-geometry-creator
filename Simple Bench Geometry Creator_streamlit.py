@@ -455,6 +455,17 @@ def main() -> None:
                     st.session_state["toe_anchor_x"] = _cfg.get("toe_anchor_x", 0.0)
                     st.session_state["toe_anchor_y"] = _cfg.get("toe_anchor_y", 0.0)
                     st.session_state["crest_setback"] = _cfg.get("crest_setback", 15.0)
+                    # Pre-seed all segment widget keys so the editors initialize with
+                    # the loaded values regardless of render order.
+                    for _i, _s in enumerate(_cfg["segments"]):
+                        st.session_state[f"label_{_i}"] = _s.get("label", f"Segment {_i + 1}")
+                        st.session_state[f"ira_{_i}"]   = float(_s.get("inter_ramp_angle", 37))
+                        st.session_state[f"bfa_{_i}"]   = float(_s.get("bench_face_angle", 65))
+                        st.session_state[f"bh_{_i}"]    = float(_s.get("bench_height", 12.0))
+                        st.session_state[f"sh_{_i}"]    = float(_s.get("stack_height", 48.0))
+                        st.session_state[f"bw_{_i}"]    = float(_s.get("berm_width", 0.0))
+                        st.session_state[f"oh_{_i}"]    = float(_s.get("overall_height", 48.0))
+                        st.session_state[f"rw_{_i}"]    = float(_s.get("road_width", 20.0))
                     st.rerun()
                 except Exception as _load_err:
                     st.error(f"Failed to load configuration: {_load_err}")
