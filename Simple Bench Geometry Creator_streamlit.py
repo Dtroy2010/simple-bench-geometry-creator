@@ -66,10 +66,12 @@ def generate_full_slope(
             x += sign * bench_width
             vertices.append((x, y))
 
-        # Inter-stack berm: wide flat platform after each complete stack except the last
+        # Inter-stack berm: make the total flat width at this stack boundary equal berm_width.
+        # The last catch berm already advanced x by bench_width, so adjust that vertex
+        # by the difference so the total flat = berm_width (not bench_width + berm_width).
         if berm_width > 0 and stack < total_stacks - 1:
-            x += sign * berm_width
-            vertices.append((x, y))
+            x += sign * (berm_width - bench_width)
+            vertices[-1] = (x, vertices[-1][1])
 
     return np.array(vertices)
 
